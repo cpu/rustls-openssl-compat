@@ -1102,6 +1102,9 @@ impl Ssl {
         let cache = self.ctx.get_mut().caches.get_server();
         config.session_storage = cache.clone();
 
+        // TODO(XXX): Do this conditionally based on OpenSSL API surface/config?
+        config.ticketer = provider::Ticketer::new().map_err(error::Error::from_rustls)?;
+
         let accepted = match mem::replace(&mut self.conn, ConnState::Nothing) {
             ConnState::Accepted(accepted) => accepted,
             _ => unreachable!(),
