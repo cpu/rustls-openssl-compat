@@ -89,17 +89,16 @@ impl SslConfigCtx {
             None => return Err(Error::bad_data("unrecognized protocol version")),
         };
 
-        Ok(match &self.state {
-            State::Validating => ActionResult::NotApplied,
-            State::ApplyingToCtx(ctx) => {
-                ctx.get_mut().set_min_protocol_version(ver);
-                ActionResult::Applied
-            }
-            State::ApplyingToSsl(ssl) => {
-                ssl.get_mut().set_min_protocol_version(ver);
-                ActionResult::Applied
-            }
-        })
+        self.state.apply_action(
+            |ctx| {
+                ctx.set_min_protocol_version(ver);
+                Ok(())
+            },
+            |ssl| {
+                ssl.set_min_protocol_version(ver);
+                Ok(())
+            },
+        )
     }
 
     fn max_protocol(&mut self, proto: &str) -> Result<ActionResult, Error> {
@@ -108,17 +107,16 @@ impl SslConfigCtx {
             None => return Err(Error::bad_data("unrecognized protocol version")),
         };
 
-        Ok(match &self.state {
-            State::Validating => ActionResult::NotApplied,
-            State::ApplyingToCtx(ctx) => {
-                ctx.get_mut().set_max_protocol_version(ver);
-                ActionResult::Applied
-            }
-            State::ApplyingToSsl(ssl) => {
-                ssl.get_mut().set_max_protocol_version(ver);
-                ActionResult::Applied
-            }
-        })
+        self.state.apply_action(
+            |ctx| {
+                ctx.set_max_protocol_version(ver);
+                Ok(())
+            },
+            |ssl| {
+                ssl.set_max_protocol_version(ver);
+                Ok(())
+            },
+        )
     }
 
     fn verify_mode(&mut self, raw_mode: &str) -> Result<ActionResult, Error> {
@@ -144,54 +142,49 @@ impl SslConfigCtx {
             }
         }
 
-        Ok(match &self.state {
-            State::Validating => ActionResult::NotApplied,
-            State::ApplyingToCtx(ctx) => {
-                ctx.get_mut().set_verify(verify_mode);
-                ActionResult::Applied
-            }
-            State::ApplyingToSsl(ssl) => {
-                ssl.get_mut().set_verify(verify_mode);
-                ActionResult::Applied
-            }
-        })
+        self.state.apply_action(
+            |ctx| {
+                ctx.set_verify(verify_mode);
+                Ok(())
+            },
+            |ssl| {
+                ssl.set_verify(verify_mode);
+                Ok(())
+            },
+        )
     }
 
     fn certificate(&mut self, path: &str) -> Result<ActionResult, Error> {
         let cert_chain = use_cert_chain_file(path)?;
 
-        Ok(match &self.state {
-            State::Validating => ActionResult::NotApplied,
-            State::ApplyingToCtx(ctx) => {
-                // the "Certificate" command after `SSL_CONF_CTX_set_ssl_ctx` is documented as using
-                // `SSL_CTX_use_certificate_chain_file`.
-                ctx.get_mut().stage_certificate_chain(cert_chain);
-                ActionResult::Applied
-            }
-            State::ApplyingToSsl(_) => {
+        self.state.apply_action(
+            |ctx| {
+                ctx.stage_certificate_chain(cert_chain);
+                Ok(())
+            },
+            |_| {
                 // the "Certificate" command after `SSL_CONF_CTX_set_ssl` is documented as using
                 // `SSL_use_certificate_file` - this is NYI for rustls-libssl.
-                return Err(Error::not_supported(
+                Err(Error::not_supported(
                     "Certificate with SSL structure not supported",
-                ));
-            }
-        })
+                ))
+            },
+        )
     }
 
     fn private_key(&mut self, path: &str) -> Result<ActionResult, Error> {
-        let key = use_private_key_file(path, FILETYPE_PEM)?;
-
-        match &self.state {
-            State::Validating => Ok(ActionResult::NotApplied),
-            State::ApplyingToCtx(ctx) => {
-                ctx.get_mut().commit_private_key(key)?;
-                Ok(ActionResult::Applied)
-            }
-            State::ApplyingToSsl(ssl) => {
-                ssl.get_mut().commit_private_key(key)?;
-                Ok(ActionResult::Applied)
-            }
-        }
+        // NOTE(XXX): we construct 'key' inside each closure to avoid use-after-move since
+        //   the borrow checker can't see only one of the two closures is ever called.
+        self.state.apply_action(
+            |ctx| {
+                let key = use_private_key_file(path, FILETYPE_PEM)?;
+                ctx.commit_private_key(key)
+            },
+            |ssl| {
+                let key = use_private_key_file(path, FILETYPE_PEM)?;
+                ssl.commit_private_key(key)
+            },
+        )
     }
 
     fn parse_protocol_version(proto: &str) -> Option<u16> {
@@ -277,6 +270,37 @@ enum State {
     ApplyingToCtx(Arc<NotThreadSafe<SslContext>>),
     /// Commands are applied to a [`Ssl`]
     ApplyingToSsl(Arc<NotThreadSafe<Ssl>>),
+}
+
+impl State {
+    /// Conditionally applies `ctx_action`, `ssl_action`, or neither depending on the state.
+    ///
+    /// If the state is `Self::Validating`, no closure is called and `Ok(ActionResult::NotApplied)`
+    /// is returned.
+    ///
+    /// If the state is `Self::ApplyingToCtx`, the `ctx_action` closure is invoked with a mutable
+    /// reference to the `SslContext`, `Ok(ActionResult::Applied)` is returned if the closure
+    /// returns no error.
+    ///
+    /// If the state is `Self::ApplyingToSsl`, the `ctx_action` closure is invoked with a mutable
+    /// reference to the `Ssl`, `Ok(ActionResult::Applied)` is returned if the closure returns
+    /// no error.
+    fn apply_action(
+        &self,
+        ctx_action: impl FnOnce(&mut SslContext) -> Result<(), Error>,
+        ssl_action: impl FnOnce(&mut Ssl) -> Result<(), Error>,
+    ) -> Result<ActionResult, Error> {
+        match self {
+            Self::Validating => return Ok(ActionResult::NotApplied),
+            Self::ApplyingToCtx(ctx) => {
+                ctx_action(ctx.get_mut())?;
+            }
+            Self::ApplyingToSsl(ssl) => {
+                ssl_action(ssl.get_mut())?;
+            }
+        }
+        Ok(ActionResult::Applied)
+    }
 }
 
 impl From<Arc<NotThreadSafe<SslContext>>> for State {
