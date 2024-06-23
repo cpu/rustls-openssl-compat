@@ -22,7 +22,12 @@ static const char *supported_cmds[] = {
     "MaxProtocol",   CUSTOM_PREFIX "MaxProtocol",
 
     "VerifyMode",    CUSTOM_PREFIX "VerifyMode",
-};
+
+    "-cert",         CUSTOM_PREFIX "cert",
+    "Certificate",   CUSTOM_PREFIX "Certificate",
+
+    "-key",          CUSTOM_PREFIX "key",
+    "PrivateKey",    CUSTOM_PREFIX "PrivateKey"};
 
 #define NUM_CMDS (sizeof(supported_cmds) / sizeof(supported_cmds[0]))
 
