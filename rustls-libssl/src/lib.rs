@@ -1097,6 +1097,10 @@ impl Ssl {
             .with_client_cert_verifier(verifier.clone())
             .with_cert_resolver(resolver);
 
+        if (self.raw_options | SSL_OP_NO_TICKET) != SSL_OP_NO_TICKET {
+            config.ticketer = provider::Ticketer::new().map_err(error::Error::from_rustls)?;
+        }
+
         config.alpn_protocols = mem::take(&mut self.alpn);
         config.max_early_data_size = self.max_early_data;
         config.send_tls13_tickets = 2; // match OpenSSL default: see `man SSL_CTX_set_num_tickets`
@@ -1649,6 +1653,8 @@ impl EnabledVersions {
         min <= v && v <= max
     }
 }
+
+const SSL_OP_NO_TICKET: u64 = 1 << 14; // See ssl.h
 
 #[cfg(test)]
 mod tests {
