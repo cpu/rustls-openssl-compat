@@ -14,7 +14,7 @@ use openssl_sys::{
 use rustls::client::Resumption;
 use rustls::crypto::aws_lc_rs as provider;
 use rustls::pki_types::{CertificateDer, ServerName};
-use rustls::server::{Accepted, Acceptor};
+use rustls::server::{Accepted, Acceptor, ProducesTickets};
 use rustls::{
     CipherSuite, ClientConfig, ClientConnection, Connection, HandshakeKind, ProtocolVersion,
     RootCertStore, ServerConfig, SignatureScheme, SupportedProtocolVersion,
@@ -411,6 +411,7 @@ pub struct SslContext {
     ex_data: ex_data::ExData,
     versions: EnabledVersions,
     caches: cache::SessionCaches,
+    ticketer: Option<Arc<dyn ProducesTickets>>,
     raw_options: u64,
     verify_mode: VerifyMode,
     verify_depth: c_int,
@@ -433,6 +434,7 @@ impl SslContext {
             ex_data: ex_data::ExData::default(),
             versions: EnabledVersions::default(),
             caches: cache::SessionCaches::default(),
+            ticketer: provider::Ticketer::new().ok(),
             raw_options: 0,
             verify_mode: VerifyMode::default(),
             verify_depth: -1,
@@ -1103,6 +1105,13 @@ impl Ssl {
 
         config.alpn_protocols = mem::take(&mut self.alpn);
         config.max_early_data_size = self.max_early_data;
+
+        if let Some(ticketer) = &self.ctx.get().ticketer {
+            if (self.raw_options & SSL_OP_NO_TICKET) != SSL_OP_NO_TICKET {
+                config.ticketer = ticketer.clone();
+            }
+        }
+
         config.send_tls13_tickets = 2; // match OpenSSL default: see `man SSL_CTX_set_num_tickets`
         let cache = self.ctx.get_mut().caches.get_server();
         config.session_storage = cache.clone();
@@ -1653,6 +1662,8 @@ impl EnabledVersions {
         min <= v && v <= max
     }
 }
+
+const SSL_OP_NO_TICKET: u64 = 1 << 14; // See ssl.h
 
 #[cfg(test)]
 mod tests {
