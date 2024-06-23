@@ -187,6 +187,36 @@ impl SslConfigCtx {
         )
     }
 
+    fn verify_ca_path(&mut self, path: &str) -> Result<ActionResult, Error> {
+        self.state.apply_action(
+            |ctx| {
+                ctx.default_cert_dir = Some(path.into());
+                Ok(())
+            },
+            |_| {
+                // NYI: would require setting a constructed `RootCertStore` on the `Ssl` instance.
+                Err(Error::not_supported(
+                    "VerifyCAPath with SSL structure not supported",
+                ))
+            },
+        )
+    }
+
+    fn verify_ca_file(&mut self, path: &str) -> Result<ActionResult, Error> {
+        self.state.apply_action(
+            |ctx| {
+                ctx.default_cert_file = Some(path.into());
+                Ok(())
+            },
+            |_| {
+                // NYI: would require setting a constructed `RootCertStore` on the `Ssl` instance.
+                Err(Error::not_supported(
+                    "VerifyCAFile with SSL structure not supported",
+                ))
+            },
+        )
+    }
+
     fn parse_protocol_version(proto: &str) -> Option<u16> {
         Some(match proto {
             "None" => 0,
@@ -457,5 +487,19 @@ const SUPPORTED_COMMANDS: &[Command] = &[
         flags: Flags(Flags::CERTIFICATE),
         value_type: ValueType::File,
         action: SslConfigCtx::private_key,
+    },
+    Command {
+        name_file: Some("VerifyCAPath"),
+        name_cmdline: Some("verifyCApath"),
+        flags: Flags(Flags::CERTIFICATE),
+        value_type: ValueType::Dir,
+        action: SslConfigCtx::verify_ca_path,
+    },
+    Command {
+        name_file: Some("VerifyCAFile"),
+        name_cmdline: Some("verifyCAfile"),
+        flags: Flags(Flags::CERTIFICATE),
+        value_type: ValueType::File,
+        action: SslConfigCtx::verify_ca_file,
     },
 ];

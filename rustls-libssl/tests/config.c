@@ -15,19 +15,39 @@ static const int conf_flags[] = {SSL_CONF_FLAG_SERVER, SSL_CONF_FLAG_CLIENT,
 #define NUM_FLAGS (sizeof(conf_flags) / sizeof(conf_flags[0]))
 
 static const char *supported_cmds[] = {
-    "-min_protocol", CUSTOM_PREFIX "min_protocol",
-    "MinProtocol",   CUSTOM_PREFIX "MinProtocol",
+    "-min_protocol",
+    CUSTOM_PREFIX "min_protocol",
+    "MinProtocol",
+    CUSTOM_PREFIX "MinProtocol",
 
-    "-max_protocol", CUSTOM_PREFIX "max_protocol",
-    "MaxProtocol",   CUSTOM_PREFIX "MaxProtocol",
+    "-max_protocol",
+    CUSTOM_PREFIX "max_protocol",
+    "MaxProtocol",
+    CUSTOM_PREFIX "MaxProtocol",
 
-    "VerifyMode",    CUSTOM_PREFIX "VerifyMode",
+    "VerifyMode",
+    CUSTOM_PREFIX "VerifyMode",
 
-    "-cert",         CUSTOM_PREFIX "cert",
-    "Certificate",   CUSTOM_PREFIX "Certificate",
+    "-cert",
+    CUSTOM_PREFIX "cert",
+    "Certificate",
+    CUSTOM_PREFIX "Certificate",
 
-    "-key",          CUSTOM_PREFIX "key",
-    "PrivateKey",    CUSTOM_PREFIX "PrivateKey"};
+    "-key",
+    CUSTOM_PREFIX "key",
+    "PrivateKey",
+    CUSTOM_PREFIX "PrivateKey"
+
+                  "-verifyCApath",
+    CUSTOM_PREFIX "verifyCApath",
+    "VerifyCAPath",
+    CUSTOM_PREFIX "VerifyCAPath",
+
+    "-verifyCAfile",
+    CUSTOM_PREFIX "verifyCAfile",
+    "VerifyCAFile",
+    CUSTOM_PREFIX "VerifyCAFile",
+};
 
 #define NUM_CMDS (sizeof(supported_cmds) / sizeof(supported_cmds[0]))
 
