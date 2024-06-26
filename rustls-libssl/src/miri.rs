@@ -49,3 +49,9 @@ pub extern "C" fn CRYPTO_free_ex_data(ty: c_int, owner: *mut c_void, ed: *mut [*
     assert!(marker[0] == owner);
     assert!(marker[1] == owner);
 }
+
+#[no_mangle]
+pub extern "C" fn RAND_bytes(buf: *mut c_char, num: c_int) -> c_int {
+    eprintln!("RAND_bytes()");
+    1
+}
