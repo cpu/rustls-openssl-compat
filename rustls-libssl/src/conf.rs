@@ -279,6 +279,44 @@ impl SslConfigCtx {
         Ok(ActionResult::NotApplied)
     }
 
+    fn options(&mut self, opts: Option<&str>) -> Result<crate::conf::ActionResult, Error> {
+        let opts = match opts {
+            Some(path) => path,
+            None => return Ok(ActionResult::ValueRequired),
+        };
+
+        let mut flags = match &self.state {
+            State::Validating => 0,
+            State::ApplyingToCtx(ctx) => ctx.get().get_options(),
+            State::ApplyingToSsl(ssl) => ssl.get().get_options(),
+        };
+
+        let parts = opts.split(',').map(|part| part.trim()).collect::<Vec<_>>();
+        for part in parts {
+            match part {
+                // Clear the no ticket flag to enable tickets
+                "SessionTicket" => flags &= !crate::SSL_OP_NO_TICKET,
+                // Set the no ticket flag to disable tickets
+                "-SessionTicket" => flags |= crate::SSL_OP_NO_TICKET,
+                // Other options are not supported.
+                _ => {}
+            }
+        }
+
+        Ok(match &self.state {
+            // For some reason the upstream returns 0 in this case.
+            State::Validating => return Err(Error::bad_data("no ctx/ssl")),
+            State::ApplyingToCtx(ctx) => {
+                ctx.get_mut().set_options(flags);
+                ActionResult::Applied
+            }
+            State::ApplyingToSsl(ssl) => {
+                ssl.get_mut().set_options(flags);
+                ActionResult::Applied
+            }
+        })
+    }
+
     fn parse_protocol_version(proto: Option<&str>) -> Option<u16> {
         Some(match proto {
             Some("None") => 0,
@@ -539,13 +577,18 @@ const SUPPORTED_COMMANDS: &[Command] = &[
         value_type: ValueType::None,
         action: SslConfigCtx::no_tickets,
     },
-    // Some commands that would be reasonable to implement in the future:
-    //  - ClientCAFile/ClientCAPath
-    //  - Options
-    //    - SessionTicket
-    //    - CANames (?)
-    //  - Groups/-groups
-    //  - SignatureAlgorithms/-sigalgs
-    //  - RequestCAFile
-    //  - Ciphersuites/-ciphersuites
+    Command {
+        name_file: Some("Options"),
+        name_cmdline: None,
+        flags: Flags(Flags::ANY),
+        value_type: ValueType::String,
+        action: SslConfigCtx::options,
+    }, // Some commands that would be reasonable to implement in the future:
+       //  - ClientCAFile/ClientCAPath
+       //  - Options
+       //    - CANames (?)
+       //  - Groups/-groups
+       //  - SignatureAlgorithms/-sigalgs
+       //  - RequestCAFile
+       //  - Ciphersuites/-ciphersuites
 ];

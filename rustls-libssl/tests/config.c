@@ -403,6 +403,71 @@ void test_no_ticket(void) {
   SSL_free(ssl);
 }
 
+void test_options_session_ticket(void) {
+  SSL_CONF_CTX *cctx = SSL_CONF_CTX_new();
+  assert(cctx != NULL);
+
+  SSL_CONF_CTX_set_flags(cctx, SSL_CONF_FLAG_FILE);
+
+  printf("\tPre-ctx:\n");
+  printf("\t\tcmd Options NULL returns %d\n",
+         SSL_CONF_cmd(cctx, "Options", NULL));
+  printf("\t\tcmd Options '' returns %d\n", SSL_CONF_cmd(cctx, "Options", ""));
+  printf("\t\tcmd Options ',' returns %d\n",
+         SSL_CONF_cmd(cctx, "Options", ","));
+  printf("\t\tcmd Options 'SessionTicket' returns %d\n",
+         SSL_CONF_cmd(cctx, "Options", "SessionTicket"));
+  printf("\t\tcmd Options '-SessionTicket' returns %d\n",
+         SSL_CONF_cmd(cctx, "Options", "-SessionTicket"));
+  printf("\t\tcmd Options 'SessionTicket,-SessionTicket' returns %d\n",
+         SSL_CONF_cmd(cctx, "Options", "SessionTicket,-SessionTicket"));
+  printf("\t\tcmd Options 'SessionTicket,-SessionTicket,Foobar' returns %d\n",
+         SSL_CONF_cmd(cctx, "Options", "SessionTicket,-SessionTicket,Foobar"));
+
+  SSL_CTX *ctx = SSL_CTX_new(TLS_method());
+  assert(ctx != NULL);
+  SSL_CONF_CTX_set_ssl_ctx(cctx, ctx);
+
+  printf("\tWith ctx:\n");
+  printf("\t\tSSL_OP_NO_TICKET before: %d\n",
+         NO_TICKET_SET(SSL_CTX_get_options(ctx)));
+  printf("\t\tcmd Options -SessionTicket returns %d\n",
+         SSL_CONF_cmd(cctx, "Options", "-SessionTicket"));
+  printf("\t\tSSL_OP_NO_TICKET after: %d\n",
+         NO_TICKET_SET(SSL_CTX_get_options(ctx)));
+
+  printf("\t\tSSL_OP_NO_TICKET before: %d\n",
+         NO_TICKET_SET(SSL_CTX_get_options(ctx)));
+  printf("\t\tcmd Options SessionTicket returns %d\n",
+         SSL_CONF_cmd(cctx, "Options", "SessionTicket"));
+  printf("\t\tSSL_OP_NO_TICKET after: %d\n",
+         NO_TICKET_SET(SSL_CTX_get_options(ctx)));
+
+  SSL *ssl = SSL_new(ctx);
+  assert(ssl != NULL);
+  SSL_CONF_CTX_set_ssl(cctx, ssl);
+
+  printf("\tWith ssl:\n");
+  printf("\t\tSSL_OP_NO_TICKET before: %d\n",
+         NO_TICKET_SET(SSL_get_options(ssl)));
+  printf("\t\tcmd Options -SessionTicket returns %d\n",
+         SSL_CONF_cmd(cctx, "Options", "-SessionTicket"));
+  printf("\t\tSSL_OP_NO_TICKET after: %d\n",
+         NO_TICKET_SET(SSL_get_options(ssl)));
+
+  printf("\t\tSSL_OP_NO_TICKET before: %d\n",
+         NO_TICKET_SET(SSL_get_options(ssl)));
+  printf("\t\tcmd Options SessionTicket returns %d\n",
+         SSL_CONF_cmd(cctx, "Options", "SessionTicket"));
+  printf("\t\tSSL_OP_NO_TICKET after: %d\n",
+         NO_TICKET_SET(SSL_get_options(ssl)));
+
+  assert(SSL_CONF_CTX_finish(cctx));
+  SSL_CONF_CTX_free(cctx);
+  SSL_CTX_free(ctx);
+  SSL_free(ssl);
+}
+
 int main(void) {
   printf("Supported commands:\n");
   printf("no base flags, default prefix:\n");
@@ -437,4 +502,10 @@ int main(void) {
 
   printf("no_ticket\n");
   test_no_ticket();
+
+  // TODO(@cpu): OpenSSL is returning 0 for all "Options (-)SessionTicket"
+  // commands and
+  //   not updating the SSL or SSL_CTX options. Needs investigation.........
+  // printf("Options SessionTicket\n");
+  // test_options_session_ticket();
 }
