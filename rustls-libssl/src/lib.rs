@@ -412,6 +412,7 @@ pub struct SslContext {
     versions: EnabledVersions,
     caches: cache::SessionCaches,
     ticketer: Option<Arc<dyn ProducesTickets>>,
+    num_tickets: usize,
     raw_options: u64,
     verify_mode: VerifyMode,
     verify_depth: c_int,
@@ -435,6 +436,7 @@ impl SslContext {
             versions: EnabledVersions::default(),
             caches: cache::SessionCaches::default(),
             ticketer: provider::Ticketer::new().ok(),
+            num_tickets: 2, // match OpenSSL default: see `man SSL_CTX_set_num_tickets`
             raw_options: 0,
             verify_mode: VerifyMode::default(),
             verify_depth: -1,
@@ -478,6 +480,14 @@ impl SslContext {
     fn set_options(&mut self, set: u64) -> u64 {
         self.raw_options |= set;
         self.raw_options
+    }
+
+    fn get_num_tickets(&self) -> usize {
+        self.num_tickets
+    }
+
+    fn set_num_tickets(&mut self, num: usize) {
+        self.num_tickets = num
     }
 
     fn clear_options(&mut self, clear: u64) -> u64 {
@@ -714,6 +724,7 @@ struct Ssl {
     ex_data: ex_data::ExData,
     versions: EnabledVersions,
     raw_options: u64,
+    num_tickets: usize,
     mode: ConnMode,
     verify_mode: VerifyMode,
     verify_depth: c_int,
@@ -754,6 +765,7 @@ impl Ssl {
             ex_data: ex_data::ExData::default(),
             versions: inner.versions.clone(),
             raw_options: inner.raw_options,
+            num_tickets: inner.num_tickets,
             mode: inner.method.mode(),
             verify_mode: inner.verify_mode,
             verify_depth: inner.verify_depth,
@@ -802,6 +814,14 @@ impl Ssl {
     fn set_options(&mut self, set: u64) -> u64 {
         self.raw_options |= set;
         self.raw_options
+    }
+
+    fn get_num_tickets(&self) -> usize {
+        self.num_tickets
+    }
+
+    fn set_num_tickets(&mut self, num: usize) {
+        self.num_tickets = num
     }
 
     fn clear_options(&mut self, clear: u64) -> u64 {
@@ -1112,7 +1132,7 @@ impl Ssl {
             }
         }
 
-        config.send_tls13_tickets = 2; // match OpenSSL default: see `man SSL_CTX_set_num_tickets`
+        config.send_tls13_tickets = self.num_tickets;
         let cache = self.ctx.get_mut().caches.get_server();
         config.session_storage = cache.clone();
 
