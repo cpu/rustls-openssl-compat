@@ -305,13 +305,13 @@ macro_rules! try_ref_from_ptr {
 pub(crate) use try_ref_from_ptr;
 
 /// If the provided pointer to a [`Castable`] is non-null, convert it to a reference to an `Arc` over
-/// the underlying rust type using [`try_arc_from`].
+/// the underlying rust type using [`clone_arc`].
 ///
 /// Otherwise, raise and return a `crate::error::Error::null_pointer()` error.
 /// In the two-argument version, the error code returned can be specified to
 /// deal with inconsistent return value usages (eg. `SSL_read`).
 ///
-/// See [`try_arc_from`] for more information.
+/// See [`clone_arc`] for more information.
 macro_rules! try_clone_arc {
     ( $var:ident ) => {
         match $crate::ffi::clone_arc($var) {
