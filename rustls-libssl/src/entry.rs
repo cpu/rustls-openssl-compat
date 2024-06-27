@@ -22,9 +22,10 @@ use crate::error::{ffi_panic_boundary, Error, MysteriouslyOppositeReturnValue};
 use crate::evp_pkey::EvpPkey;
 use crate::ex_data::ExData;
 use crate::ffi::{
-    clone_arc, free_arc, free_arc_into_inner, free_box, str_from_cstring, string_from_cstring,
-    to_arc_mut_ptr, to_boxed_mut_ptr, try_clone_arc, try_from, try_mut_slice_int, try_ref_from_ptr,
-    try_slice, try_slice_int, try_str, Castable, OwnershipArc, OwnershipBox, OwnershipRef,
+    box_castable_not_thread_safe, clone_arc, free_arc, free_arc_into_inner, free_box,
+    str_from_cstring, string_from_cstring, to_arc_mut_ptr, to_boxed_mut_ptr, try_clone_arc,
+    try_from, try_mut_slice_int, try_ref_from_ptr, try_slice, try_slice_int, try_str, Castable,
+    OwnershipArc, OwnershipRef,
 };
 use crate::not_thread_safe::NotThreadSafe;
 use crate::x509::{load_certs, OwnedX509, OwnedX509Stack};
@@ -1833,11 +1834,8 @@ entry! {
     }
 }
 
-pub type SSL_CONF_CTX = conf::SslConfigCtx;
-
-impl Castable for SSL_CONF_CTX {
-    type Ownership = OwnershipBox; // SSL_CONF_CTX does not do reference counting.
-    type RustType = NotThreadSafe<conf::SslConfigCtx>;
+box_castable_not_thread_safe! {
+    pub type SSL_CONF_CTX(conf::SslConfigCtx);
 }
 
 /// Normal OpenSSL return value convention success indicator.

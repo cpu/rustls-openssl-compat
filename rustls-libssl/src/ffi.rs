@@ -59,6 +59,43 @@ pub(crate) trait Castable {
     type RustType;
 }
 
+/// Defines a new [`Castable`] type alias with [`OwnershipBox`] ownership for a
+/// [`NotThreadSafe`] Rust type.
+macro_rules! box_castable_not_thread_safe {
+    (
+        $(#[$comment:meta])*
+        pub type $name:ident($rust_type:ty);
+    ) => {
+        crate::ffi::castable!(OwnershipBox $(#[$comment])* $name $rust_type crate::not_thread_safe::NotThreadSafe<$rust_type>);
+    };
+}
+
+pub(crate) use box_castable_not_thread_safe;
+
+/// Defines a new [`Castable`] with the specified ownership.
+///
+/// In general you should prefer using `box_castable!`, `arc_castable!`, or `ref_castable!`
+/// instead of this macro.
+macro_rules! castable {
+    (
+        $ownership:ident
+        $(#[$comment:meta])*
+        $name:ident
+        $aliased_type:tt
+        $castable_type:ty
+    ) => {
+        $(#[$comment])*
+        pub type $name = $aliased_type;
+
+        impl crate::ffi::Castable for $name {
+            type Ownership = crate::ffi::$ownership;
+            type RustType = $castable_type;
+        }
+    };
+}
+
+pub(crate) use castable;
+
 /// Convert a const pointer to a [`Castable`] to a const pointer to its underlying
 /// [`Castable::RustType`].
 ///
