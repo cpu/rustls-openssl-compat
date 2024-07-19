@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use openssl_sys::{EVP_PKEY, X509};
 use rustls::client::ResolvesClientCert;
-use rustls::pki_types::CertificateDer;
+use rustls::pki_types::{CertificateDer, SubjectPublicKeyInfoDer};
 use rustls::server::{ClientHello, ResolvesServerCert};
 use rustls::sign;
 use rustls::{SignatureAlgorithm, SignatureScheme};
@@ -263,6 +263,10 @@ impl sign::SigningKey for OpenSslKey {
             }
             _ => None,
         }
+    }
+
+    fn public_key(&self) -> Option<SubjectPublicKeyInfoDer<'_>> {
+        Some(SubjectPublicKeyInfoDer::from(self.0.spki()))
     }
 
     fn algorithm(&self) -> SignatureAlgorithm {

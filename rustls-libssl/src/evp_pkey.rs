@@ -1,11 +1,13 @@
 use core::ffi::{c_char, c_int, c_long, CStr};
 use core::{fmt, ptr};
+use std::slice;
 
 use openssl_sys::{
-    d2i_AutoPrivateKey, EVP_DigestSign, EVP_DigestSignInit, EVP_MD_CTX_free, EVP_MD_CTX_new,
-    EVP_PKEY_CTX_set_rsa_padding, EVP_PKEY_CTX_set_rsa_pss_saltlen, EVP_PKEY_CTX_set_signature_md,
-    EVP_PKEY_free, EVP_PKEY_up_ref, EVP_sha256, EVP_sha384, EVP_sha512, EVP_MD, EVP_MD_CTX,
-    EVP_PKEY, EVP_PKEY_CTX, RSA_PKCS1_PADDING, RSA_PKCS1_PSS_PADDING,
+    d2i_AutoPrivateKey, i2d_PUBKEY, EVP_DigestSign, EVP_DigestSignInit, EVP_MD_CTX_free,
+    EVP_MD_CTX_new, EVP_PKEY_CTX_set_rsa_padding, EVP_PKEY_CTX_set_rsa_pss_saltlen,
+    EVP_PKEY_CTX_set_signature_md, EVP_PKEY_free, EVP_PKEY_up_ref, EVP_sha256, EVP_sha384,
+    EVP_sha512, OPENSSL_free, EVP_MD, EVP_MD_CTX, EVP_PKEY, EVP_PKEY_CTX, RSA_PKCS1_PADDING,
+    RSA_PKCS1_PSS_PADDING,
 };
 use rustls::pki_types::PrivateKeyDer;
 
@@ -58,6 +60,26 @@ impl EvpPkey {
         } else {
             rustls::SignatureAlgorithm::Unknown(0)
         }
+    }
+
+    /// Return the Subject Public Key Info bytes for this key.
+    pub fn spki(&self) -> Vec<u8> {
+        let (ptr, len) = unsafe {
+            let mut ptr = ptr::null_mut();
+            let len = i2d_PUBKEY(self.pkey, &mut ptr);
+            (ptr, len)
+        };
+
+        if len <= 0 {
+            return vec![];
+        }
+        let len = len as usize;
+
+        let mut v = Vec::with_capacity(len);
+        v.extend_from_slice(unsafe { slice::from_raw_parts(ptr, len) });
+
+        unsafe { OPENSSL_free(ptr as *mut _) };
+        v
     }
 
     /// Caller borrows our reference.
