@@ -266,7 +266,9 @@ impl sign::SigningKey for OpenSslKey {
     }
 
     fn public_key(&self) -> Option<SubjectPublicKeyInfoDer<'_>> {
-        Some(SubjectPublicKeyInfoDer::from(self.0.spki()))
+        Some(SubjectPublicKeyInfoDer::from(
+            self.0.subject_public_key_info(),
+        ))
     }
 
     fn algorithm(&self) -> SignatureAlgorithm {

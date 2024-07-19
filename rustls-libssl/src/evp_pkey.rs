@@ -63,7 +63,7 @@ impl EvpPkey {
     }
 
     /// Return the Subject Public Key Info bytes for this key.
-    pub fn spki(&self) -> Vec<u8> {
+    pub fn subject_public_key_info(&self) -> Vec<u8> {
         let (ptr, len) = unsafe {
             let mut ptr = ptr::null_mut();
             let len = i2d_PUBKEY(self.pkey, &mut ptr);
@@ -327,6 +327,7 @@ extern "C" {
 #[cfg(all(test, not(miri)))]
 mod tests {
     use super::*;
+    use std::io::Cursor;
 
     #[test]
     fn supports_rsaencryption_keys() {
@@ -367,5 +368,43 @@ mod tests {
             key.sign(rsa_pss_sha512().as_ref(), b"hello").unwrap().len(),
             256
         );
+    }
+
+    #[test]
+    fn pkey_spki() {
+        for (key_path, cert_path) in &[
+            ("test-ca/rsa/server.key", "test-ca/rsa/server.cert"),
+            (
+                "test-ca/ecdsa-p256/server.key",
+                "test-ca/ecdsa-p256/server.cert",
+            ),
+            (
+                "test-ca/ecdsa-p384/server.key",
+                "test-ca/ecdsa-p384/server.cert",
+            ),
+            (
+                "test-ca/ecdsa-p521/server.key",
+                "test-ca/ecdsa-p521/server.cert",
+            ),
+            ("test-ca/ed25519/server.key", "test-ca/ed25519/server.cert"),
+        ] {
+            let key_der = std::fs::read(key_path).unwrap();
+            let cert_der = std::fs::read(cert_path).unwrap();
+
+            let key_der = rustls_pemfile::private_key(&mut Cursor::new(key_der))
+                .unwrap()
+                .unwrap();
+            let key = EvpPkey::new_from_der_bytes(key_der).unwrap();
+
+            let cert_der = rustls_pemfile::certs(&mut Cursor::new(cert_der))
+                .next()
+                .unwrap()
+                .unwrap();
+            let parsed_cert = rustls::server::ParsedCertificate::try_from(&cert_der).unwrap();
+
+            let cert_spki = parsed_cert.subject_public_key_info();
+            let key_spki = key.subject_public_key_info();
+            assert_eq!(&key_spki, cert_spki.as_ref());
+        }
     }
 }
