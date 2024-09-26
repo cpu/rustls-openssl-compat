@@ -79,6 +79,19 @@ entry! {
 }
 
 entry! {
+    pub fn _SSL_alert_type_string(value: c_int) -> *const c_char {
+        crate::constants::alert_level_to_short_string(u8::try_from(value).unwrap_or_default())
+            .as_ptr() as *const c_char
+    }
+}
+
+entry! {
+    pub fn _SSL_alert_type_string_long(value: c_int) -> *const c_char {
+        crate::constants::alert_level_to_long_string(u8::try_from(value).unwrap_or_default()).as_ptr() as *const c_char
+    }
+}
+
+entry! {
     pub fn _BIO_f_ssl() -> *const BIO_METHOD {
         &crate::bio::SSL_BIO_METHOD
     }
@@ -944,7 +957,7 @@ entry! {
 
 entry! {
     pub fn _SSL_set_cipher_list(_ssl: *mut SSL, str: *const c_char) -> c_int {
-       match try_str!(str) {
+        match try_str!(str) {
             "HIGH:!aNULL:!MD5" => C_INT_SUCCESS,
             _ => Error::not_supported("SSL_CTX_set_cipher_list")
                 .raise()
@@ -1284,6 +1297,12 @@ entry! {
 }
 
 entry! {
+    pub fn _SSL_set_verify_result(ssl: *mut SSL, v: c_long) {
+        try_clone_arc!(ssl).get().set_last_verification_result(v)
+    }
+}
+
+entry! {
     pub fn _SSL_get_certificate(ssl: *const SSL) -> *mut X509 {
         try_clone_arc!(ssl).get().get_certificate()
     }
@@ -1469,6 +1488,12 @@ entry! {
 entry! {
     pub fn _SSL_get_session(ssl: *const SSL) -> *mut SSL_SESSION {
         try_clone_arc!(ssl).get().borrow_current_session()
+    }
+}
+
+entry! {
+    pub fn _SSL_SESSION_get_compress_id(ssl: *mut SSL) -> c_int {
+        try_clone_arc!(ssl).get().compression_id()
     }
 }
 
@@ -2044,6 +2069,18 @@ entry_stub! {
     pub fn _SSL_state_string_long(_ssl: *const SSL) -> *const c_char;
 }
 
+entry_stub! {
+    pub fn _SSL_peek(_ssl: *mut SSL, _buf: *mut c_void, _num: c_int) -> c_int;
+}
+
+entry_stub! {
+    pub fn _SSL_get_shared_ciphers(
+        _ssl: *const SSL,
+        _buf: *mut c_char,
+        _size: c_int,
+    ) -> *mut c_char;
+}
+
 // The SSL_CTX X509_STORE isn't being meaningfully used yet.
 entry_stub! {
     pub fn _SSL_CTX_set_default_verify_store(_ctx: *mut SSL_CTX) -> c_int;
@@ -2081,6 +2118,13 @@ entry_stub! {
 
 entry_stub! {
     pub fn _SSL_get_client_CA_list(_ssl: *const SSL) -> *mut stack_st_X509_NAME;
+}
+
+entry_stub! {
+    pub fn _SSL_add_file_cert_subjects_to_stack(
+        _stack: *mut stack_st_X509_NAME,
+        _file: *const c_char,
+    ) -> c_int;
 }
 
 // no individual message logging
@@ -2201,6 +2245,10 @@ entry_stub! {
 }
 
 entry_stub! {
+    pub fn _SSL_CTX_set_srp_cb_arg(_ctx: *mut SSL_CTX, _arg: *mut c_void) -> c_int;
+}
+
+entry_stub! {
     pub fn _SSL_get_srp_username(_ssl: *mut SSL) -> *mut c_char;
 }
 
@@ -2310,6 +2358,16 @@ type SSL_custom_ext_free_cb_ex = Option<
         add_arg: *mut c_void,
     ),
 >;
+
+// No low level protocol details.
+
+entry_stub! {
+    pub fn _SSL_get_finished(_ssl: *const SSL, _buf: *mut c_void, _count: usize) -> usize;
+}
+
+entry_stub! {
+    pub fn _SSL_get_peer_finished(_ssl: *const SSL, _buf: *mut c_void, _count: usize) -> usize;
+}
 
 // ---------------------
 
