@@ -87,7 +87,8 @@ entry! {
 
 entry! {
     pub fn _SSL_alert_type_string_long(value: c_int) -> *const c_char {
-        crate::constants::alert_level_to_long_string(u8::try_from(value).unwrap_or_default()).as_ptr() as *const c_char
+        crate::constants::alert_level_to_long_string(u8::try_from(value).unwrap_or_default())
+            .as_ptr() as *const c_char
     }
 }
 
