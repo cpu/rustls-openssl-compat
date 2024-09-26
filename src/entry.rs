@@ -2025,6 +2025,14 @@ entry_stub! {
 pub type SSL_client_hello_cb_func =
     Option<unsafe extern "C" fn(_ssl: *mut SSL, _al: *mut c_int, _arg: *mut c_void) -> c_int>;
 
+entry_stub! {
+    pub fn _SSL_state_string(_ssl: *const SSL) -> *const c_char;
+}
+
+entry_stub! {
+    pub fn _SSL_state_string_long(_ssl: *const SSL) -> *const c_char;
+}
+
 // The SSL_CTX X509_STORE isn't being meaningfully used yet.
 entry_stub! {
     pub fn _SSL_CTX_set_default_verify_store(_ctx: *mut SSL_CTX) -> c_int;
@@ -2181,6 +2189,16 @@ entry_stub! {
     ) -> c_int;
 }
 
+entry_stub! {
+    pub fn _SSL_get_srp_username(_ssl: *mut SSL) -> *mut c_char;
+}
+
+// no DH ciphersuites
+
+entry_stub! {
+    pub fn _SSL_CTX_set0_tmp_dh_pkey(_ctx: *mut SSL_CTX, _dhpkey: *mut EVP_PKEY) -> c_int;
+}
+
 // no post-handshake auth
 
 entry_stub! {
@@ -2189,6 +2207,16 @@ entry_stub! {
 
 entry_stub! {
     pub fn _SSL_set_post_handshake_auth(_s: *mut SSL, _val: c_int);
+}
+
+entry_stub! {
+    pub fn _SSL_verify_client_post_handshake(_ssl: *mut SSL) -> c_int;
+}
+
+// no renegotiation
+
+entry_stub! {
+    pub fn _SSL_renegotiate(_ssl: *mut SSL) -> c_int;
 }
 
 // No kTLS/sendfile support
