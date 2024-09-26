@@ -411,7 +411,7 @@ SSL_write
 """.split())
 
 print('| Symbol | curl[^curl] | nginx[^nginx] | httpd[^httpd] | implemented? |')
-print('|---|---|---|---|')
+print('|---|---|---|---|---|')
 for i in sorted(items.keys()):
     print('| `' + i + '` ' + flags(items[i]) + ' | ' + curl_p(i) + ' | ' + nginx_p(i) + ' | ' + httpd_p(i) + ' | ' + impl_p(i) + ' |')
 

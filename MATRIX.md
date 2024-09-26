@@ -1,5 +1,5 @@
 | Symbol | curl[^curl] | nginx[^nginx] | httpd[^httpd] | implemented? |
-|---|---|---|---|
+|---|---|---|---|---|
 | `BIO_f_ssl`  | :white_check_mark: |  |  | :white_check_mark: |
 | `BIO_new_buffer_ssl_connect`  |  |  |  |  |
 | `BIO_new_ssl`  |  |  |  |  |
