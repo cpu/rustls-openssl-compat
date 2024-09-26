@@ -11,7 +11,8 @@ use std::{fs, path::PathBuf};
 
 use openssl_sys::{
     stack_st_X509, stack_st_X509_NAME, NID_undef, OPENSSL_malloc, TLSEXT_NAMETYPE_host_name,
-    EVP_PKEY, OPENSSL_NPN_NEGOTIATED, OPENSSL_NPN_NO_OVERLAP, X509, X509_STORE, X509_STORE_CTX,
+    BIGNUM, EVP_CIPHER_CTX, EVP_PKEY, HMAC_CTX, OPENSSL_NPN_NEGOTIATED, OPENSSL_NPN_NO_OVERLAP,
+    X509, X509_STORE, X509_STORE_CTX,
 };
 use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
 
@@ -1995,6 +1996,35 @@ entry_stub! {
     ) -> c_int;
 }
 
+entry_stub! {
+    pub fn _SSL_CTX_set_tlsext_ticket_key_evp_cb(
+        _ctx: *mut SSL_CTX,
+        _fp: SSL_CTX_tlsext_ticket_key_evp_cb_func,
+    ) -> c_int;
+}
+
+pub type SSL_CTX_tlsext_ticket_key_evp_cb_func = Option<
+    unsafe extern "C" fn(
+        _ssl: *mut SSL,
+        _key_name: *mut c_uchar,
+        _iv: *mut c_uchar,
+        _ctx: *mut EVP_CIPHER_CTX,
+        _hctx: *mut HMAC_CTX,
+        _enc: c_int,
+    ) -> c_int,
+>;
+
+entry_stub! {
+    pub fn _SSL_CTX_set_client_hello_cb(
+        _ctx: *mut SSL_CTX,
+        _cb: SSL_client_hello_cb_func,
+        _arg: *mut c_void,
+    );
+}
+
+pub type SSL_client_hello_cb_func =
+    Option<unsafe extern "C" fn(_ssl: *mut SSL, _al: *mut c_int, _arg: *mut c_void) -> c_int>;
+
 // The SSL_CTX X509_STORE isn't being meaningfully used yet.
 entry_stub! {
     pub fn _SSL_CTX_set_default_verify_store(_ctx: *mut SSL_CTX) -> c_int;
@@ -2028,6 +2058,10 @@ entry_stub! {
 
 entry_stub! {
     pub fn _SSL_load_client_CA_file(_file: *const c_char) -> *mut stack_st_X509_NAME;
+}
+
+entry_stub! {
+    pub fn _SSL_get_client_CA_list(_ssl: *const SSL) -> *mut stack_st_X509_NAME;
 }
 
 // no individual message logging
@@ -2136,6 +2170,17 @@ entry_stub! {
     pub fn _SSL_CTX_set_srp_username(_ctx: *mut SSL_CTX, _name: *mut c_char) -> c_int;
 }
 
+entry_stub! {
+    pub fn _SSL_set_srp_server_param(
+        _s: *mut SSL,
+        _n: *const BIGNUM,
+        _g: *const BIGNUM,
+        _sa: *const BIGNUM,
+        _v: *const BIGNUM,
+        _info: *const c_char,
+    ) -> c_int;
+}
+
 // no post-handshake auth
 
 entry_stub! {
@@ -2156,6 +2201,17 @@ entry_stub! {
         _size: usize,
         _flags: c_int,
     ) -> c_long;
+}
+
+// No access to individual certificate extensions
+
+entry_stub! {
+    pub fn _SSL_client_hello_get0_ext(
+        _ssl: *mut SSL,
+        _type: c_uint,
+        _out: *mut *const c_uchar,
+        _outlen: *mut usize,
+    ) -> c_int;
 }
 
 // No custom extension support
