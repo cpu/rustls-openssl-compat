@@ -10,9 +10,9 @@ use std::sync::Arc;
 use std::{fs, path::PathBuf};
 
 use openssl_sys::{
-    stack_st_X509, stack_st_X509_NAME, NID_undef, OPENSSL_malloc, TLSEXT_NAMETYPE_host_name,
-    BIGNUM, EVP_CIPHER_CTX, EVP_PKEY, HMAC_CTX, OPENSSL_NPN_NEGOTIATED, OPENSSL_NPN_NO_OVERLAP,
-    X509, X509_STORE, X509_STORE_CTX,
+    stack_st_SSL_CIPHER, stack_st_X509, stack_st_X509_NAME, stack_st_void, NID_undef,
+    OPENSSL_malloc, TLSEXT_NAMETYPE_host_name, BIGNUM, EVP_CIPHER_CTX, EVP_PKEY, HMAC_CTX,
+    OPENSSL_NPN_NEGOTIATED, OPENSSL_NPN_NO_OVERLAP, X509, X509_STORE, X509_STORE_CTX,
 };
 use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
 
@@ -1492,12 +1492,6 @@ entry! {
     }
 }
 
-entry! {
-    pub fn _SSL_SESSION_get_compress_id(ssl: *mut SSL) -> c_int {
-        try_clone_arc!(ssl).get().compression_id()
-    }
-}
-
 impl Castable for SSL {
     type Ownership = OwnershipArc;
     type RustType = NotThreadSafe<SSL>;
@@ -2007,6 +2001,14 @@ entry_stub! {
 }
 
 entry_stub! {
+    pub fn _SSL_set_session_id_context(
+        _ssl: *mut SSL,
+        _sid_ctx: *const c_uchar,
+        _sid_ctx_len: c_uint,
+    ) -> c_int;
+}
+
+entry_stub! {
     pub fn _SSL_CTX_remove_session(_ssl: *const SSL, _session: *mut SSL_SESSION) -> c_int;
 }
 
@@ -2081,6 +2083,18 @@ entry_stub! {
         _size: c_int,
     ) -> *mut c_char;
 }
+
+entry_stub! {
+    pub fn _SSL_get_ciphers(_ssl: *const SSL) -> *mut stack_st_SSL_CIPHER;
+}
+
+entry_stub! {
+    pub fn _SSL_CTX_set_client_cert_cb(_ctx: *mut SSL_CTX, _cb: SSL_client_cert_cb_func);
+}
+
+pub type SSL_client_cert_cb_func = Option<
+    unsafe extern "C" fn(_ssl: *mut SSL, _x509: *mut *mut X509, _pkey: *mut *mut EVP_PKEY) -> c_int,
+>;
 
 // The SSL_CTX X509_STORE isn't being meaningfully used yet.
 entry_stub! {
@@ -2235,6 +2249,16 @@ entry_stub! {
 }
 
 entry_stub! {
+    pub fn _SSL_CTX_set_srp_username_callback(
+        _ctx: *mut SSL_CTX,
+        _cb: SSL_srp_username_cb_func,
+    ) -> c_int;
+}
+
+pub type SSL_srp_username_cb_func =
+    Option<unsafe extern "C" fn(_ssl: *mut SSL, _ad: *mut c_int, _arg: *mut c_void) -> c_int>;
+
+entry_stub! {
     pub fn _SSL_set_srp_server_param(
         _s: *mut SSL,
         _n: *const BIGNUM,
@@ -2251,6 +2275,10 @@ entry_stub! {
 
 entry_stub! {
     pub fn _SSL_get_srp_username(_ssl: *mut SSL) -> *mut c_char;
+}
+
+entry_stub! {
+    pub fn _SSL_get_srp_userinfo(_ssl: *mut SSL) -> *mut c_char;
 }
 
 // no DH ciphersuites
@@ -2368,6 +2396,17 @@ entry_stub! {
 
 entry_stub! {
     pub fn _SSL_get_peer_finished(_ssl: *const SSL, _buf: *mut c_void, _count: usize) -> usize;
+}
+
+// No TLS 1.2 protocol compression.
+
+entry_stub! {
+    pub fn _SSL_SESSION_get_compress_id(_ssl: *mut SSL) -> c_int;
+}
+
+entry_stub! {
+    // nb: should return stack_st_SSL_COMP, but this isn't defined in openssl-sys
+    pub fn _SSL_COMP_get_compression_methods() -> *mut stack_st_void;
 }
 
 // ---------------------

@@ -1497,11 +1497,6 @@ impl Ssl {
         }
     }
 
-    fn compression_id(&self) -> c_int {
-        // TODO(XXX): wire up when exposed by rustls.
-        return 0;
-    }
-
     fn get_current_session(&self) -> Option<Arc<NotThreadSafe<SslSession>>> {
         match &self.conn {
             ConnState::Server(_, _, cache) => cache.get_most_recent_session(),
